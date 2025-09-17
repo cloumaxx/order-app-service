@@ -1,0 +1,91 @@
+pipeline {
+  agent any
+
+  environment {
+    REGISTRY          = 'docker.io'
+    IMAGE_NAME        = 'docker.io/eduardoalvear/order-app'
+    INFRA_REPO_SSH    = 'git@github.com:cloumaxx/order-app-infra.git'
+    INFRA_REPO_BRANCH = 'main'
+    INFRA_CHART_PATH  = 'charts/order-platform'
+    VALUES_FILE       = "${INFRA_CHART_PATH}/values.yaml"
+  }
+
+  stages {
+    stage('Checkout backend') {
+      steps { checkout scm }
+    }
+
+    stage('Compute tag') {
+      steps {
+        script {
+          env.BUILD_TAG_SHORT = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+        }
+      }
+    }
+
+    stage('Docker login') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+          sh 'echo "$PASS" | docker login -u "$USER" --password-stdin ${REGISTRY}'
+        }
+      }
+    }
+
+    stage('Build & Push image') {
+      steps {
+        sh """
+          docker build -t ${IMAGE_NAME}:${BUILD_TAG_SHORT} .
+          docker push ${IMAGE_NAME}:${BUILD_TAG_SHORT}
+        """
+      }
+    }
+
+    stage('Checkout infra repo') {
+      steps {
+        sshagent (credentials: ['git-ssh']) {
+          sh """
+            rm -rf infra-repo
+            git clone -b ${INFRA_REPO_BRANCH} ${INFRA_REPO_SSH} infra-repo
+            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+          """
+        }
+      }
+    }
+
+    stage('Install yq') {
+      steps {
+        sh """
+          curl -sL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 \
+            -o /usr/local/bin/yq && chmod +x /usr/local/bin/yq
+        """
+      }
+    }
+
+    stage('Bump values.yaml') {
+      steps {
+        dir('infra-repo') {
+          sh """
+            yq -i '.backend.image.repository = "${IMAGE_NAME}"' ${VALUES_FILE}
+            yq -i '.backend.image.tag = "${BUILD_TAG_SHORT}"' ${VALUES_FILE}
+          """
+        }
+      }
+    }
+
+    stage('Commit & Push infra changes') {
+      steps {
+        dir('infra-repo') {
+          sshagent (credentials: ['git-ssh']) {
+            sh """
+              git config user.email "ci@jenkins.local"
+              git config user.name "Jenkins CI"
+              git add ${VALUES_FILE}
+              git commit -m "ci: bump image to ${IMAGE_NAME}:${BUILD_TAG_SHORT}" || echo "No changes"
+              git push origin ${INFRA_REPO_BRANCH}
+            """
+          }
+        }
+      }
+    }
+  }
+}
