@@ -23,4 +23,7 @@ public class OrderService {
     public List<Order> findAll() {
         return orderRepository.findAll();
     }
+    public  void delete(Order order) {
+        orderRepository.delete(order);
+    }
 }
