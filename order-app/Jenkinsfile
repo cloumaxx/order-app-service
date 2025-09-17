@@ -46,11 +46,11 @@ pipeline {
 
     stage('Checkout infra repo') {
       steps {
-        sshagent (credentials: ['git-ssh']) {
+        sshagent (credentials: ['ssh-orderapp']) {
           sh """
             rm -rf infra-repo
-            git clone -b ${INFRA_REPO_BRANCH} ${INFRA_REPO_SSH} infra-repo
             ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+            git clone -b ${INFRA_REPO_BRANCH} ${INFRA_REPO_SSH} infra-repo
           """
         }
       }
