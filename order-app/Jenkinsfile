@@ -17,8 +17,10 @@ pipeline {
 
     stage('Compute tag') {
       steps {
-        script {
-          env.BUILD_TAG_SHORT = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+        dir('order-app') {
+          script {
+            env.BUILD_TAG_SHORT = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+          }
         }
       }
     }
@@ -33,10 +35,12 @@ pipeline {
 
     stage('Build & Push image') {
       steps {
-        sh """
-          docker build -t ${IMAGE_NAME}:${BUILD_TAG_SHORT} .
-          docker push ${IMAGE_NAME}:${BUILD_TAG_SHORT}
-        """
+        dir('order-app') {
+          sh """
+            docker build -t ${IMAGE_NAME}:${BUILD_TAG_SHORT} .
+            docker push ${IMAGE_NAME}:${BUILD_TAG_SHORT}
+          """
+        }
       }
     }
 
