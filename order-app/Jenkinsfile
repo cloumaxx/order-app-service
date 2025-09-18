@@ -49,6 +49,7 @@ pipeline {
         sshagent (credentials: ['ssh-orderapp']) {
           sh """
             rm -rf infra-repo
+            mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
             git clone -b ${INFRA_REPO_BRANCH} ${INFRA_REPO_SSH} infra-repo
           """
@@ -57,46 +58,42 @@ pipeline {
     }
 
     stage('Install yq') {
-       steps {
-          sh """
-            set -eux
-            mkdir -p "\$WORKSPACE/bin"
-            curl -sL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 \
-              -o "\$WORKSPACE/bin/yq"
-            chmod +x "\$WORKSPACE/bin/yq"
-            "\$WORKSPACE/bin/yq" --version
-          """
-        }
+      steps {
+        sh """
+          set -eux
+          mkdir -p "${WORKSPACE}/bin"
+          curl -sL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 \
+            -o "${WORKSPACE}/bin/yq"
+          chmod +x "${WORKSPACE}/bin/yq"
+          "${WORKSPACE}/bin/yq" --version
+        """
+      }
     }
 
     stage('Bump values.yaml') {
       steps {
-          dir('infra-repo') {
-            withEnv(["PATH=\$WORKSPACE/bin:\$PATH"]) {
-              sh """
-                set -eux
-                yq -i '.backend.image.repository = "${IMAGE_NAME}"' ${VALUES_FILE}
-                yq -i '.backend.image.tag = "${BUILD_TAG_SHORT}"' ${VALUES_FILE}
-              """
-            }
-          }
+        dir('infra-repo') {
+          sh """
+            set -eux
+            "${WORKSPACE}/bin/yq" -i '.backend.image.repository = "${IMAGE_NAME}"' ${VALUES_FILE}
+            "${WORKSPACE}/bin/yq" -i '.backend.image.tag = "${BUILD_TAG_SHORT}"' ${VALUES_FILE}
+          """
         }
+      }
     }
 
     stage('Commit & Push infra changes') {
       steps {
         dir('infra-repo') {
           sshagent (credentials: ['ssh-orderapp']) {
-            withEnv(["PATH=\$WORKSPACE/bin:\$PATH"]) {
-              sh """
-                set -eux
-                git config user.email "ci@jenkins.local"
-                git config user.name "Jenkins CI"
-                git add ${VALUES_FILE}
-                git commit -m "ci: bump image to ${IMAGE_NAME}:${BUILD_TAG_SHORT}" || echo "No changes"
-                git push origin ${INFRA_REPO_BRANCH}
-              """
-            }
+            sh """
+              set -eux
+              git config user.email "ci@jenkins.local"
+              git config user.name "Jenkins CI"
+              git add ${VALUES_FILE}
+              git commit -m "ci: bump image to ${IMAGE_NAME}:${BUILD_TAG_SHORT}" || echo "No changes"
+              git push origin ${INFRA_REPO_BRANCH}
+            """
           }
         }
       }
