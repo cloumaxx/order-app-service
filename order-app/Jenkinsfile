@@ -79,7 +79,7 @@ pipeline {
     stage('Commit & Push infra changes') {
       steps {
         dir('infra-repo') {
-          sshagent (credentials: ['git-ssh']) {
+          sshagent (credentials: ['ssh-orderapp']) {
             sh """
               git config user.email "ci@jenkins.local"
               git config user.name "Jenkins CI"
