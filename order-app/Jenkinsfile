@@ -84,21 +84,22 @@ pipeline {
     }
 
     stage('Commit & Push infra changes') {
-       steps {
-          dir('infra-repo') {
-            sshagent (credentials: ['ssh-orderapp']) {
-              withEnv(["PATH=\$WORKSPACE/bin:\$PATH"]) {
-                sh """
-                  set -eux
-                  git config user.email "ci@jenkins.local"
-                  git config user.name "Jenkins CI"
-                  git add ${VALUES_FILE}
-                  git commit -m "ci: bump image to ${IMAGE_NAME}:${BUILD_TAG_SHORT}" || echo "No changes"
-                  git push origin ${INFRA_REPO_BRANCH}
-                """
-              }
+      steps {
+        dir('infra-repo') {
+          sshagent (credentials: ['ssh-orderapp']) {
+            withEnv(["PATH=\$WORKSPACE/bin:\$PATH"]) {
+              sh """
+                set -eux
+                git config user.email "ci@jenkins.local"
+                git config user.name "Jenkins CI"
+                git add ${VALUES_FILE}
+                git commit -m "ci: bump image to ${IMAGE_NAME}:${BUILD_TAG_SHORT}" || echo "No changes"
+                git push origin ${INFRA_REPO_BRANCH}
+              """
             }
           }
+        }
+      }
     }
   }
 }
