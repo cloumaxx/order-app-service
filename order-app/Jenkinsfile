@@ -3,36 +3,39 @@ pipeline {
     kubernetes {
       defaultContainer 'jnlp'
       yaml """
-        apiVersion: v1
-        kind: Pod
-        spec:
-          containers:
-            - name: bash
-              image: alpine:3.20
-              command: ['sh', '-c', 'cat']
-              tty: true
-              volumeMounts:
-                - name: bin
-                  mountPath: /workspace/bin
-            - name: kaniko
-              image: gcr.io/kaniko-project/executor:latest
-              command: ['/busybox/sh', '-c', 'cat']
-              tty: true
-              volumeMounts:
-                - name: kaniko-cache
-                  mountPath: /kaniko/cache
-                - name: docker-config
-                  mountPath: /kaniko/.docker
-          volumes:
-            - name: kaniko-cache
-              emptyDir: {}
-            - name: docker-config
-              emptyDir: {}
-            - name: bin
-              emptyDir: {}
-      """
+  apiVersion: v1
+  kind: Pod
+  spec:
+    containers:
+      - name: bash
+        image: alpine:3.20
+        command: ['sh','-c','cat']
+        tty: true
+        volumeMounts:
+          - name: bin
+            mountPath: /workspace/bin
+
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:v1.23.2-debug   # <- variante con BusyBox
+        command: ['/busybox/sh','-c','cat']                   # <- ya existe
+        tty: true
+        volumeMounts:
+          - name: kaniko-cache
+            mountPath: /kaniko/cache
+          - name: docker-config
+            mountPath: /kaniko/.docker
+
+    volumes:
+      - name: kaniko-cache
+        emptyDir: {}
+      - name: docker-config
+        emptyDir: {}
+      - name: bin
+        emptyDir: {}
+  """
     }
   }
+
 
 
   environment {
