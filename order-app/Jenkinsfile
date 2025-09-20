@@ -16,7 +16,7 @@ pipeline {
                   mountPath: /workspace/bin
             - name: kaniko
               image: gcr.io/kaniko-project/executor:latest
-              command: ['sh', '-c', 'cat']
+              command: ['/busybox/sh', '-c', 'cat']
               tty: true
               volumeMounts:
                 - name: kaniko-cache
@@ -33,6 +33,7 @@ pipeline {
       """
     }
   }
+
 
   environment {
     REGISTRY          = 'docker.io'
