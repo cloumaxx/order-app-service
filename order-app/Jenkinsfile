@@ -49,7 +49,10 @@ pipeline {
 
   stages {
     stage('Checkout backend') {
-      steps { checkout scm }
+      steps {
+        git branch: 'main',
+            url: 'https://github.com/cloumaxx/order-app-service.git'
+      }
     }
 
     stage('Compute tag') {
