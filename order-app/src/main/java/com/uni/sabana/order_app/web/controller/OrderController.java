@@ -27,4 +27,9 @@ public class OrderController {
     public Order save(@RequestBody Order order) {
         return orderRepository.save(order);
     }
+
+    @GetMapping("/hello")
+    public String hello() {
+        return "Hello from CI/CD demo!";
+    }
 }
